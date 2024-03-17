@@ -44,6 +44,9 @@ def main():
         canned_gesture_classifier_options=mp.tasks.components.processors.ClassifierOptions(
             category_allowlist=["None", "Closed_Fist", "Open_Palm", "Victory"],
         ),
+        min_hand_detection_confidence=0.1,
+        min_hand_presence_confidence=0.3,
+        min_tracking_confidence=0.1
     )
 
     # Initialize info plot:
@@ -99,6 +102,7 @@ def main():
                 # If hand landmarks detected, draw on top of video frame to be displayed
                 if last_result.hand_landmarks:
                     draw_hand_landmarks(frame, last_result.hand_landmarks[0])
+                    cv.putText(frame, f"Wrist Y: {last_result.hand_landmarks[0][0].y}", (50, 50), cv.FONT_HERSHEY_COMPLEX, 1, (255, 255, 255))
 
             # Show annotated video frame
             cv.imshow("Live Video", frame)
