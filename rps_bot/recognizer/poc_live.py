@@ -19,7 +19,7 @@ import cv2 as cv
 import time
 
 # Path to task model to use
-MODEL_PATH = "./models/gesture_recognizer.task"
+MODEL_PATH = "./models/gesture_recognizer_rps.task"
 
 
 def main():
@@ -40,10 +40,6 @@ def main():
         running_mode=RunningMode.LIVE_STREAM,
         # Callback for results
         result_callback=handle_result,
-        # Limit the allowed categories
-        canned_gesture_classifier_options=mp.tasks.components.processors.ClassifierOptions(
-            category_allowlist=["None", "Closed_Fist", "Open_Palm", "Victory"],
-        ),
         min_hand_detection_confidence=0.1,
         min_hand_presence_confidence=0.3,
         min_tracking_confidence=0.1
@@ -52,10 +48,11 @@ def main():
     # Initialize info plot:
     # List of bar labels
     gesture_labels = [
-        "None",
-        "Closed_Fist\n(Rock)",
-        "Open_Palm\n(Paper)",
-        "Victory\n(Scissors)",
+        "''",
+        "none",
+        "rock",
+        "paper",
+        "scissors",
     ]
     fig = plt.figure()
     # Create bar chart, set values to 0s for now
@@ -124,10 +121,11 @@ def update_info_plot(bar_plot, result: GestureRecognizerResult):
             gesture.category_name: gesture.score for gesture in result.gestures[0]
         }
         scores = [
-            gestures.get("None", 0),
-            gestures.get("Closed_Fist", 0),
-            gestures.get("Open_Palm", 0),
-            gestures.get("Victory", 0),
+            gestures.get("", 0),
+            gestures.get("none", 0),
+            gestures.get("rock", 0),
+            gestures.get("paper", 0),
+            gestures.get("scissors", 0),
         ]
     else:
         scores = [0 for _ in bar_plot]

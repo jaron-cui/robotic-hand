@@ -20,7 +20,7 @@ from events import (
 from gestures import HandGesture
 
 
-DEFAULT_MODEL_PATH = "./models/gesture_recognizer.task"
+DEFAULT_MODEL_PATH = "./models/gesture_recognizer_rps.task"
 
 
 class HandRecognizer:
@@ -39,10 +39,6 @@ class HandRecognizer:
             running_mode=RunningMode.LIVE_STREAM,
             # Callback for results
             result_callback=self._recognizer_result_cb,
-            # Limit the allowed categories
-            canned_gesture_classifier_options=mp.tasks.components.processors.ClassifierOptions(
-                category_allowlist=["None", "Closed_Fist", "Open_Palm", "Victory"],
-            ),
             min_hand_detection_confidence=min_hand_detection_confidence,
             min_hand_presence_confidence=min_hand_presence_confidence,
             min_tracking_confidence=min_tracking_confidence,
@@ -113,11 +109,11 @@ class HandRecognizer:
             return HandGesture.NONE
         mp_gesture = self._last_result.gestures[0][0].category_name
         match mp_gesture:
-            case "Closed_Fist":
+            case "rock":
                 return HandGesture.ROCK
-            case "Open_Palm":
+            case "paper":
                 return HandGesture.PAPER
-            case "Victory":
+            case "scissors":
                 return HandGesture.SCISSORS
             case _:
                 return HandGesture.NONE
@@ -164,6 +160,6 @@ class HandRecognizer:
         """
         self._last_result = result
 
-
-recog = HandRecognizer()
-recog.run()
+if __name__ == "__main__":
+    recog = HandRecognizer()
+    recog.run()
