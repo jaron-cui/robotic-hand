@@ -1,4 +1,4 @@
-from enum import Enum, auto
+from gestures import HandGesture
 
 class GameOffered:
     """

@@ -1,3 +1,12 @@
+from mediapipe.tasks.python.vision.hand_landmarker import HandLandmark
+from mediapipe.python.solutions import (
+    drawing_utils as mp_drawing,
+    drawing_styles as mp_drawing_styles,
+    hands as mp_hands,
+)
+from mediapipe.framework.formats import landmark_pb2
+import numpy as np
+
 # Adapted directly from MP code example
 def draw_hand_landmarks(frame: np.ndarray, hand_landmarks: list[HandLandmark]):
     hand_landmarks_proto = landmark_pb2.NormalizedLandmarkList()

@@ -5,36 +5,22 @@ from mediapipe.tasks.python.vision import (
     RunningMode,
     GestureRecognizerResult,
 )
-from mediapipe.tasks.python.vision.hand_landmarker import HandLandmark
-from mediapipe.python.solutions import (
-    drawing_utils as mp_drawing,
-    drawing_styles as mp_drawing_styles,
-    hands as mp_hands,
-)
-from mediapipe.framework.formats import landmark_pb2
 
 import _draw
 
-import numpy as np
 import cv2 as cv
 import time
 from typing import Type, Any
-from recognizer_event import (
+from events import (
     GameOffered,
     Swinging,
     GesturePlayed,
     GameCancelled,
 )
+from gestures import HandGesture
 
 
 DEFAULT_MODEL_PATH = "./models/gesture_recognizer.task"
-
-
-class HandGesture(Enum):
-    NONE = 0,
-    ROCK = auto(),
-    PAPER = auto(),
-    SCISSORS = auto()
 
 
 class HandRecognizer:
