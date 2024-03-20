@@ -19,6 +19,12 @@ import numpy as np
 import cv2 as cv
 import time
 from typing import Type, Any
+from recognizer_event import (
+    GameOffered,
+    Swinging,
+    GesturePlayed,
+    GameCancelled,
+)
 
 
 DEFAULT_MODEL_PATH = "./models/gesture_recognizer.task"
@@ -57,6 +63,12 @@ class HandRecognizer:
         )
 
         self._last_result = None
+        self._events = {
+            GameOffered: set(),
+            Swinging: set(),
+            GesturePlayed: set(),
+            GameCancelled: set(),
+        }
 
     def run(self):
         """
@@ -132,6 +144,31 @@ class HandRecognizer:
         if not self.is_hand_present():
             return None
         return self._last_result.hand_landmarks[0][0].y
+
+    def add_event_listener(self, event_type: Type, callback):
+        """
+        Register a callback for when the specified event type occurs.
+        callback should accept an event of the given type as argument.
+        """
+        try:
+            self._events[event_type].append(callback)
+        except KeyError:
+            raise ValueError(f"{event_type} is not an event raised by {self.__class__.__name__}")
+
+    def remove_event_listener(self, event_type: Type, callback):
+        """
+        Unregister a callback for the specified event type, stop receiving calls.
+        Does nothing if not already registered.
+        """
+        try:
+            event_listeners = self._events[event_type]
+        except KeyError:
+            raise ValueError(f"{event_type.__name__} is not an event raised by {self.__class__.__name__}")
+
+        try:
+            event_listeners.remove(callback)
+        except KeyError:
+            pass
 
     def _recognizer_result_cb(
         self, result: GestureRecognizerResult, output_image: mp.Image, timestamp_ms: int
