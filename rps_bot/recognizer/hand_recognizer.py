@@ -10,6 +10,7 @@ import _draw
 
 import cv2 as cv
 import time
+import matplotlib.pyplot as plt
 from typing import Type, Any
 from events import (
     GameOffered,
@@ -63,6 +64,10 @@ class HandRecognizer:
         if not video_cap.isOpened():
             raise RuntimeError("Failed to open video camera")
 
+        hand_height_plt = _draw.LiveHandHeightPlot(min_h=1, max_h=0, time_range_secs=5)
+        plt.ion()
+        plt.show()
+
         # With recognizer:
         with GestureRecognizer.create_from_options(
             self.recognizer_options
@@ -86,6 +91,9 @@ class HandRecognizer:
                 # If hand landmarks detected, draw on top of video frame to be displayed
                 if self._last_result and self._last_result.hand_landmarks:
                     _draw.draw_hand_landmarks(frame, self._last_result.hand_landmarks[0])
+
+                # Update hand height plot
+                hand_height_plt.update_hand_height_plot(time.time(), self.get_wrist_screen_y())
 
                 # Show annotated video frame
                 cv.imshow("Live Video", frame)
