@@ -64,7 +64,9 @@ class HandRecognizer:
         if not video_cap.isOpened():
             raise RuntimeError("Failed to open video camera")
 
-        hand_height_plt = _draw.LiveHandHeightPlot(min_h=1, max_h=0, time_range_secs=5)
+        fig, (ax0, ax1) = plt.subplots(2, 1, height_ratios=[3, 1])
+        hand_height_plt = _draw.LiveHandHeightPlot(fig, ax0, min_h=1, max_h=0, time_range_secs=5)
+        gesture_plt = _draw.LiveGesturePlot(fig, ax1)
         plt.ion()
         plt.show()
 
@@ -92,8 +94,14 @@ class HandRecognizer:
                 if self._last_result and self._last_result.hand_landmarks:
                     _draw.draw_hand_landmarks(frame, self._last_result.hand_landmarks[0])
 
+                    gesture = self._last_result.gestures[0][0]
+                    gesture_plt.update_gesture(gesture.category_name, gesture.score)
+
                 # Update hand height plot
-                hand_height_plt.update_hand_height_plot(time.time(), self.get_wrist_screen_y())
+                hand_height_plt.update_hand_height(time.time(), self.get_wrist_screen_y())
+                # Draw
+                fig.canvas.draw()
+                fig.canvas.flush_events()
 
                 # Show annotated video frame
                 cv.imshow("Live Video", frame)
@@ -101,6 +109,8 @@ class HandRecognizer:
                 # Quit if Q pressed
                 if cv.waitKey(1) == ord("q"):
                     break
+
+        plt.close("all")
 
     def is_hand_present(self) -> bool:
         """
