@@ -28,9 +28,9 @@ class HandRecognizer:
     def __init__(
         self,
         model_path: str = DEFAULT_MODEL_PATH,
-        min_hand_detection_confidence: float = 0.1,
-        min_hand_presence_confidence: float = 0.3,
-        min_tracking_confidence: float = 0.1,
+        min_hand_detection_confidence: float = 0.5,
+        min_hand_presence_confidence: float = 0.5,
+        min_tracking_confidence: float = 0.5,
     ):
         # Create gesture recognizer options
         base_options = mp.tasks.BaseOptions(model_asset_path=model_path)
@@ -53,6 +53,8 @@ class HandRecognizer:
             GameCancelled: set(),
         }
 
+        self.tracking_inited = False
+
     def run(self):
         """
         Start processing camera frames and detecting hand data.
@@ -63,6 +65,8 @@ class HandRecognizer:
         video_cap = cv.VideoCapture(0)
         if not video_cap.isOpened():
             raise RuntimeError("Failed to open video camera")
+
+        hand_tracker = cv.TrackerCSRT.create()
 
         fig, (ax0, ax1) = plt.subplots(2, 1, height_ratios=[3, 1])
         hand_height_plt = _draw.LiveHandHeightPlot(fig, ax0, min_h=1, max_h=0, time_range_secs=5)
@@ -92,13 +96,32 @@ class HandRecognizer:
 
                 # If hand landmarks detected, draw on top of video frame to be displayed
                 if self._last_result and self._last_result.hand_landmarks:
-                    _draw.draw_hand_landmarks(frame, self._last_result.hand_landmarks[0])
+                    landmarks = self._last_result.hand_landmarks[0]
+                    bbox = _get_hand_bbox(landmarks, frame.shape, padding=0.05)
+                    hand_tracker.init(frame, bbox)
+                    self.tracking_inited = True
+                    
+                    hand_height = self.get_wrist_screen_y()
 
-                    gesture = self._last_result.gestures[0][0]
-                    gesture_plt.update_gesture(gesture.category_name, gesture.score)
+                    _draw.draw_hand_landmarks(frame, landmarks)
+                    cv.rectangle(frame, bbox, (255,255,255), 2, 1)
+                    # Update hand height plot
+                    if self._last_result.gestures:
+                        gesture = self._last_result.gestures[0][0]
+                        gesture_plt.update_gesture(gesture.category_name, gesture.score)
+                elif self.tracking_inited:
+                    ok, bbox = hand_tracker.update(frame)
+                    if ok:
+                        # Tracking success
+                        cv.rectangle(frame, bbox, (0,208,255), 2, 1)
+                        hand_height = (bbox[1] + bbox[3] / 2) / frame.shape[0]
+                    else:
+                        hand_height = None
+                else:
+                    hand_height = None
+                
+                hand_height_plt.update_hand_height(time.time(), hand_height)
 
-                # Update hand height plot
-                hand_height_plt.update_hand_height(time.time(), self.get_wrist_screen_y())
                 # Draw
                 fig.canvas.draw()
                 fig.canvas.flush_events()
@@ -177,6 +200,13 @@ class HandRecognizer:
         Callback for async results from MP gesture recognizer
         """
         self._last_result = result
+
+def _get_hand_bbox(landmarks, frame_shape, padding: float):
+    xmin = int((min([landmark.x for landmark in landmarks]) - padding) * frame_shape[1])
+    xmax = int((max([landmark.x for landmark in landmarks]) + padding) * frame_shape[1])
+    ymin = int((min([landmark.y for landmark in landmarks]) - padding) * frame_shape[0])
+    ymax = int((max([landmark.y for landmark in landmarks]) + padding) * frame_shape[0])
+    return (xmin, ymin, xmax - xmin, ymax - ymin)
 
 if __name__ == "__main__":
     recog = HandRecognizer()
