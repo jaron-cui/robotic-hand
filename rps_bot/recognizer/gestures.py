@@ -1,7 +1,7 @@
-from enum import Enum, auto
+from enum import Enum
 
 class HandGesture(Enum):
-    NONE = 0,
-    ROCK = auto(),
-    PAPER = auto(),
-    SCISSORS = auto()
+    NONE = "none"
+    ROCK = "rock"
+    PAPER = "paper"
+    SCISSORS = "scissors"

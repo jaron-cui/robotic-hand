@@ -1,0 +1,1 @@
+from gui.recognizer import RecognizerFigure
