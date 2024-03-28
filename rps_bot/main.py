@@ -13,10 +13,10 @@ def main():
     if not video_cap.isOpened():
         raise RuntimeError("Failed to open video camera")
 
-    with HandRecognizer() as recognizer:
-        fig = RecognizerFigure(recognizer)
-        fig.show()
+    fig = RecognizerFigure()
+    fig.show()
 
+    with HandRecognizer() as recognizer:
         while True:
             # Timestamp
             ts_ms = int(time.time() * 1000)
@@ -30,8 +30,9 @@ def main():
 
             recognizer.next_frame(frame, ts_ms)
 
-            annotate_frame(frame, recognizer)
+            fig.update(recognizer)
 
+            annotate_frame(frame, recognizer)
             cv.imshow("Camera", frame)
 
             # Quit if Q pressed

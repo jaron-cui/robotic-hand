@@ -7,10 +7,7 @@ from recognizer import HandGesture
 from recognizer.events import RecognitionResultsUpdated
 
 class RecognizerFigure:
-    def __init__(self, recognizer: HandRecognizer):
-        self.recognizer = recognizer
-        recognizer.add_event_listener(RecognitionResultsUpdated, self.cb_update)
-
+    def __init__(self):
         self.fig, (ax0, ax1) = plt.subplots(2, 1, height_ratios=[3, 1])
         self.hand_height_plt = LiveHandHeightPlot(
             ax0, min_h=1, max_h=0, time_range_secs=5
@@ -21,12 +18,12 @@ class RecognizerFigure:
         plt.ion()
         plt.show()
 
-    def cb_update(self, event: RecognitionResultsUpdated):
-        hand_height = self.recognizer.get_hand_y()
-        self.hand_height_plt.update_hand_height(event.ts, hand_height)
+    def update(self, recognizer: HandRecognizer):
+        hand_height = recognizer.get_hand_y()
+        self.hand_height_plt.update_hand_height(time.time(), hand_height)
 
-        gesture = self.recognizer.get_gesture()
-        gesture_score = self.recognizer.get_gesture_score()
+        gesture = recognizer.get_gesture()
+        gesture_score = recognizer.get_gesture_score()
         self.gesture_plt.update_gesture(gesture, gesture_score)
 
         # Draw
