@@ -5,11 +5,17 @@ from recognizer import HandRecognizer
 from threading import Thread
 
 import time
+from argparse import ArgumentParser
 
 
 def main():
+    argparser = ArgumentParser(prog="Rock Paper Scissors Bot")
+    argparser.add_argument("-c", "--cam-index", type=int, default=0)
+    args = argparser.parse_args()
+    cam_index = args.cam_index
+
     # Open video capture
-    video_cap = cv.VideoCapture(0)
+    video_cap = cv.VideoCapture(cam_index)
     if not video_cap.isOpened():
         raise RuntimeError("Failed to open video camera")
 
