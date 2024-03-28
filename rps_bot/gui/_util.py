@@ -6,8 +6,25 @@ from mediapipe.python.solutions import (
 )
 from mediapipe.framework.formats import landmark_pb2
 import numpy as np
+import cv2 as cv
 
-def draw_hand_landmarks(frame: np.ndarray, hand_landmarks: list[HandLandmark]):
+from recognizer import HandRecognizer
+
+
+def annotate_frame(frame: np.array, recognizer: HandRecognizer):
+    landmarks = recognizer.get_hand_landmarks()
+    if landmarks:
+        _draw_hand_landmarks(frame, landmarks)
+
+    bbox = recognizer.get_hand_bbox_camera()
+    if bbox:
+        box_color = (
+            (255, 255, 255) if recognizer.is_hand_recognized() else (0, 208, 255)
+        )
+        cv.rectangle(frame, bbox, box_color, 2, 1)
+
+
+def _draw_hand_landmarks(frame: np.ndarray, hand_landmarks: list[HandLandmark]):
     """
     Draw hand landmarks on the given frame.
     Adapted directly from MP code example.
