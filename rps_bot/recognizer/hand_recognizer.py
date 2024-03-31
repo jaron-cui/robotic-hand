@@ -19,6 +19,7 @@ from recognizer.gestures import HandGesture
 
 
 DEFAULT_MODEL_PATH = "./models/gesture_recognizer_rps.task"
+TRACKER_UPDATE_MIN_INTERVAL_SECS = 0.1
 
 
 class HandRecognizer:
@@ -59,6 +60,7 @@ class HandRecognizer:
         self.tracking_roi_padding = tracking_roi_padding
         self.tracking_inited = False
         self._last_tracking_roi = None
+        self._last_tracking_update_time = time.time()
 
     def __enter__(self):
         self.mp_recognizer = GestureRecognizer.create_from_options(
@@ -83,12 +85,14 @@ class HandRecognizer:
                 for cb in self._events[RecognitionResultsUpdated]
             ]
 
-        if self.is_hand_recognized():
-            self.hand_tracker.init(self._last_frame.numpy_view(), self.get_hand_bbox_camera())
-            self.tracking_inited = True
-        elif self.tracking_inited:
-            ok, bbox = self.hand_tracker.update(self._last_frame.numpy_view())
-            self._last_tracking_roi = list(bbox) if ok else None
+        if time.time() - self._last_tracking_update_time >= TRACKER_UPDATE_MIN_INTERVAL_SECS:
+            self._last_tracking_update_time = time.time()
+            if self.is_hand_recognized():
+                self.hand_tracker.init(self._last_frame.numpy_view(), self.get_hand_bbox_camera())
+                self.tracking_inited = True
+            elif self.tracking_inited:
+                ok, bbox = self.hand_tracker.update(self._last_frame.numpy_view())
+                self._last_tracking_roi = list(bbox) if ok else None
 
     def is_hand_recognized(self) -> bool:
         """
