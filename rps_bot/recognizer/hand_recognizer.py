@@ -11,14 +11,15 @@ import cv2 as cv
 import time
 from typing import Type
 from queue import Queue
-import numpy as np
 
 from recognizer import _util
 from recognizer.events import *
 from recognizer.gestures import HandGesture
+from recognizer.motion_analysis import MotionAnalyzer
 
 
 DEFAULT_MODEL_PATH = "./models/gesture_recognizer_rps.task"
+TRACKER_INIT_MIN_INTERVAL_SECS = 0.3
 TRACKER_UPDATE_MIN_INTERVAL_SECS = 0.1
 
 
@@ -47,6 +48,7 @@ class HandRecognizer:
         self._results_queue = Queue()
         self._last_result = None
         self._last_frame = None
+        self._last_ts = None
 
         self._events = {
             RecognitionResultsUpdated: set(),
@@ -60,7 +62,10 @@ class HandRecognizer:
         self.tracking_roi_padding = tracking_roi_padding
         self.tracking_inited = False
         self._last_tracking_roi = None
+        self._last_tracking_init_time = time.time()
         self._last_tracking_update_time = time.time()
+
+        self.motion_predictor = MotionAnalyzer(3)
 
     def __enter__(self):
         self.mp_recognizer = GestureRecognizer.create_from_options(
@@ -71,26 +76,41 @@ class HandRecognizer:
     def __exit__(self, exc_type, exc_value, exc_tb):
         self.mp_recognizer.close()
 
-    def next_frame(self, frame, ts_ms: int):
+    def next_frame(self, frame, ts: float):
         # Create MP image and recognize
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
-        self.mp_recognizer.recognize_async(mp_image, ts_ms)
+        self.mp_recognizer.recognize_async(mp_image, int(ts * 1000))
 
         while not self._results_queue.empty():
-            self._last_result, self._last_frame, ts_ms = self._results_queue.get()
+            self._last_result, self._last_frame, result_ts_ms = (
+                self._results_queue.get()
+            )
 
-            ts = ts_ms / 1000
+            result_ts = result_ts_ms / 1000
             [
-                cb(RecognitionResultsUpdated(ts))
+                cb(RecognitionResultsUpdated(result_ts))
                 for cb in self._events[RecognitionResultsUpdated]
             ]
 
-        if time.time() - self._last_tracking_update_time >= TRACKER_UPDATE_MIN_INTERVAL_SECS:
-            self._last_tracking_update_time = time.time()
-            if self.is_hand_recognized():
-                self.hand_tracker.init(self._last_frame.numpy_view(), self.get_hand_bbox_camera())
+            if self.get_hand_y() is not None:
+                self.motion_predictor.add_sample(result_ts, self.get_hand_y())
+
+            if (
+                self.is_hand_recognized()
+                and time.time() - self._last_tracking_init_time
+                >= TRACKER_INIT_MIN_INTERVAL_SECS
+            ):
+                self._last_tracking_init_time = time.time()
+                self.hand_tracker.init(
+                    self._last_frame.numpy_view(), self.get_hand_bbox_camera()
+                )
                 self.tracking_inited = True
-            elif self.tracking_inited:
+            elif (
+                self.tracking_inited
+                and time.time() - self._last_tracking_update_time
+                >= TRACKER_UPDATE_MIN_INTERVAL_SECS
+            ):
+                self._last_tracking_update_time = time.time()
                 ok, bbox = self.hand_tracker.update(self._last_frame.numpy_view())
                 self._last_tracking_roi = list(bbox) if ok else None
 
@@ -157,18 +177,24 @@ class HandRecognizer:
             )
             return [xmin, ymin, xmax - xmin, ymax - ymin]
         elif self._last_tracking_roi:
-            return _util.bbox_cam_to_screen(self._last_tracking_roi, self._last_frame.numpy_view().shape)
+            return _util.bbox_cam_to_screen(
+                self._last_tracking_roi, self._last_frame.numpy_view().shape
+            )
         else:
             return None
 
     def get_hand_bbox_camera(self) -> list[int] | None:
         if self.is_hand_recognized():
-            return _util.bbox_screen_to_cam(self.get_hand_bbox_screen(), self._last_frame.numpy_view().shape)
+            return _util.bbox_screen_to_cam(
+                self.get_hand_bbox_screen(), self._last_frame.numpy_view().shape
+            )
         else:
             return self._last_tracking_roi
 
     def get_hand_landmarks(self) -> list[HandLandmark] | None:
-         return self._last_result.hand_landmarks[0] if self.is_hand_recognized() else None
+        return (
+            self._last_result.hand_landmarks[0] if self.is_hand_recognized() else None
+        )
 
     def add_event_listener(self, event_type: Type, callback):
         """

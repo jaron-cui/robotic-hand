@@ -15,9 +15,12 @@ def main():
     cam_index = args.cam_index
 
     # Open video capture
-    video_cap = cv.VideoCapture(cam_index)
+    video_cap = cv.VideoCapture(cam_index, cv.CAP_DSHOW)
     if not video_cap.isOpened():
         raise RuntimeError("Failed to open video camera")
+
+    video_cap.set(cv.CAP_PROP_FRAME_WIDTH, 1920 / 2)
+    video_cap.set(cv.CAP_PROP_FRAME_HEIGHT, 1080 / 2)
 
     fig = RecognizerFigure()
     fig.show()
@@ -25,7 +28,7 @@ def main():
     with HandRecognizer() as recognizer:
         while True:
             # Timestamp
-            ts_ms = int(time.time() * 1000)
+            ts = time.time()
             # Get frame
             ret, frame = video_cap.read()
 
@@ -34,7 +37,7 @@ def main():
                 print(f"Did not receive frame on attempt to read.")
                 continue
 
-            recognizer.next_frame(frame, ts_ms)
+            recognizer.next_frame(frame, ts)
 
             fig.update(recognizer)
 
