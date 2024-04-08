@@ -12,10 +12,10 @@ import time
 from typing import Type
 from queue import Queue
 
-from recognizer import _util
-from recognizer.events import *
-from recognizer.gestures import HandGesture
-from recognizer.motion_analysis import MotionAnalyzer
+from . import _util
+from .events import *
+from .gestures import HandGesture
+from .motion_analysis import MotionAnalyzer
 
 
 DEFAULT_MODEL_PATH = "./models/gesture_recognizer_rps.task"
@@ -32,9 +32,12 @@ class HandRecognizer:
         min_tracking_confidence: float = 0.5,
         tracking_roi_padding: float = 0.05,
     ):
+        # Responsible to analyzing hand motion to detect games
+        self.motion_predictor = MotionAnalyzer(5)
+
         # Create gesture recognizer options
         base_options = mp.tasks.BaseOptions(model_asset_path=model_path)
-        self.recognizer_options = GestureRecognizerOptions(
+        self._recognizer_options = GestureRecognizerOptions(
             base_options,
             # Live video mode
             running_mode=RunningMode.LIVE_STREAM,
@@ -45,11 +48,13 @@ class HandRecognizer:
             min_tracking_confidence=min_tracking_confidence,
         )
 
+        # Results from MediaPipe added here for use
         self._results_queue = Queue()
         self._last_result = None
         self._last_frame = None
         self._last_ts = None
 
+        # Dict of event type to its set of callbacks
         self._events = {
             RecognitionResultsUpdated: set(),
             GameOffered: set(),
@@ -58,18 +63,22 @@ class HandRecognizer:
             GameCancelled: set(),
         }
 
-        self.hand_tracker = cv.TrackerCSRT.create()
-        self.tracking_roi_padding = tracking_roi_padding
-        self.tracking_inited = False
+        # Tracker to fill in for MediaPipe when its hand tracking fails
+        self._hand_tracker = cv.TrackerCSRT.create()
+        # In screen coords, the amount of padding to add around hand region to use as ROI
+        self._tracking_roi_padding = tracking_roi_padding
+        # Whether this track has been initialized
+        self._tracking_inited = False
+        # The most recent updated ROI by the tracker
         self._last_tracking_roi = None
+
+        # Time that these were last performed. Recorded for limiting rate.
         self._last_tracking_init_time = time.time()
         self._last_tracking_update_time = time.time()
 
-        self.motion_predictor = MotionAnalyzer(5)
-
     def __enter__(self):
         self.mp_recognizer = GestureRecognizer.create_from_options(
-            self.recognizer_options
+            self._recognizer_options
         )
         return self
 
@@ -101,17 +110,17 @@ class HandRecognizer:
                 >= TRACKER_INIT_MIN_INTERVAL_SECS
             ):
                 self._last_tracking_init_time = time.time()
-                self.hand_tracker.init(
+                self._hand_tracker.init(
                     self._last_frame.numpy_view(), self.get_hand_bbox_camera()
                 )
-                self.tracking_inited = True
+                self._tracking_inited = True
             elif (
-                self.tracking_inited
+                self._tracking_inited
                 and time.time() - self._last_tracking_update_time
                 >= TRACKER_UPDATE_MIN_INTERVAL_SECS
             ):
                 self._last_tracking_update_time = time.time()
-                ok, bbox = self.hand_tracker.update(self._last_frame.numpy_view())
+                ok, bbox = self._hand_tracker.update(self._last_frame.numpy_view())
                 self._last_tracking_roi = list(bbox) if ok else None
 
     def is_hand_recognized(self) -> bool:
@@ -164,16 +173,16 @@ class HandRecognizer:
         if self.is_hand_recognized():
             landmarks = self.get_hand_landmarks()
             xmin = (
-                min([landmark.x for landmark in landmarks]) - self.tracking_roi_padding
+                min([landmark.x for landmark in landmarks]) - self._tracking_roi_padding
             )
             xmax = (
-                max([landmark.x for landmark in landmarks]) + self.tracking_roi_padding
+                max([landmark.x for landmark in landmarks]) + self._tracking_roi_padding
             )
             ymin = (
-                min([landmark.y for landmark in landmarks]) - self.tracking_roi_padding
+                min([landmark.y for landmark in landmarks]) - self._tracking_roi_padding
             )
             ymax = (
-                max([landmark.y for landmark in landmarks]) + self.tracking_roi_padding
+                max([landmark.y for landmark in landmarks]) + self._tracking_roi_padding
             )
             return [xmin, ymin, xmax - xmin, ymax - ymin]
         elif self._last_tracking_roi:

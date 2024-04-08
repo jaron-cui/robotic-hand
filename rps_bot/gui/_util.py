@@ -8,7 +8,7 @@ from mediapipe.framework.formats import landmark_pb2
 import numpy as np
 import cv2 as cv
 
-from recognizer import HandRecognizer
+from .recognizer import HandRecognizer
 
 
 def annotate_frame(frame: np.array, recognizer: HandRecognizer):

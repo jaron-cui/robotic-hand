@@ -2,8 +2,7 @@ import matplotlib.pyplot as plt
 
 import time
 
-from recognizer import HandRecognizer
-from recognizer import HandGesture
+from rps_bot.recognizer import HandRecognizer, HandGesture
 
 
 class RecognizerFigure:
@@ -21,20 +20,20 @@ class RecognizerFigure:
         preds = recognizer.motion_predictor.filtered_from_last_n_secs(3)
         ts = [p[0] for p in preds]
         y = [p[1][0] for p in preds]
-        vy = [p[1][1] for p in preds]
+        # vy = [p[1][1] for p in preds]
 
         self.hand_height_plt.set_data(ts, y)
 
-        peaks = recognizer.motion_predictor.turning_points_in_window_ts
+        peaks = [p.ts for p in recognizer.motion_predictor.turning_points]
         self.hand_height_plt.axvlines(peaks)
 
         gesture = recognizer.get_gesture()
         gesture_score = recognizer.get_gesture_score()
         self.gesture_plt.update_gesture(gesture, gesture_score)
 
-        eta = recognizer.motion_predictor.current_play_eta
+        eta = recognizer.motion_predictor.move_eta
         self.motion_pred_plot.update_phase(
-            recognizer.motion_predictor.current_est_phase or 0,
+            recognizer.motion_predictor.est_phase or 0,
             f"+{(eta - time.time()):.1f}s" if eta else "Shoot",
         )
 

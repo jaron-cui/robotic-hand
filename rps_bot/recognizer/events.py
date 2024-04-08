@@ -1,7 +1,9 @@
-from recognizer.gestures import HandGesture
 from mediapipe.tasks.python.vision import GestureRecognizerResult
 
 from dataclasses import dataclass
+
+from .gestures import HandGesture
+
 
 @dataclass
 class RecognitionResultsUpdated:

@@ -1,7 +1,7 @@
 import cv2 as cv
 
-from gui import RecognizerFigure, annotate_frame
-from recognizer import HandRecognizer
+from .gui import RecognizerFigure, annotate_frame
+from .recognizer import HandRecognizer
 
 import time
 from argparse import ArgumentParser
