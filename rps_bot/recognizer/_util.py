@@ -14,3 +14,11 @@ def bbox_cam_to_screen(cam_bbox, frame_shape):
     xsize /= frame_shape[1]
     ysize /= frame_shape[0]
     return xmin, ymin, xsize, ysize
+
+
+def make_screen_roi_from_landmarks(landmarks: list, padding: float) -> list[float]:
+    xmin = min([landmark.x for landmark in landmarks]) - padding
+    xmax = max([landmark.x for landmark in landmarks]) + padding
+    ymin = min([landmark.y for landmark in landmarks]) - padding
+    ymax = max([landmark.y for landmark in landmarks]) + padding
+    return [xmin, ymin, xmax - xmin, ymax - ymin]

@@ -72,8 +72,7 @@ class LiveDataPlot:
         self.line.set_ydata(vals)
         # Adjust bounds of time axis.
         # Slides to the right over time. Will appear as if data is shifting left over time.
-        if len(ts) > 0:
-            self.ax.set_xlim(ts[-1] - self.time_range_secs, ts[-1])
+        self.ax.set_xlim(time.time() - self.time_range_secs, time.time())
 
     def axvlines(self, x):
         for line in self.ax.lines[1:]:
