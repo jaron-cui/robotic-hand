@@ -109,10 +109,7 @@ class HandRecognizer:
                 else:
                     self.tracker.stop()
 
-            if self.tracker.get_hand_y():
-                self.motion_predictor.add_sample(
-                    self._last_ts, self.tracker.get_hand_y()
-                )
+            self.motion_predictor.add_sample(self._last_ts, self.tracker.get_hand_y())
 
     def is_hand_recognized(self) -> bool:
         """

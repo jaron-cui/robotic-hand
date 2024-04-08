@@ -42,38 +42,40 @@ class MotionAnalyzer:
         # The time that the motion data was last analyzed for predictions. Recorded for limiting rate.
         self._time_last_prediction = time.time()
 
-    def add_sample(self, ts: float, hand_screen_y: float):
+    def add_sample(self, ts: float, hand_screen_y: float | None):
         """
         Update with a new sample of the hand screen Y at ts.
         If ts is less recent than already seen samples, it is ignored.
         """
-        # If there's been any previous samples
-        if len(self.ts_history) > 0:
-            # Time delta from last sample
-            dt = self.ts_history[-1] - ts
-            # Update transition matrix to account for varying time delta
-            self._kalman.transitionMatrix = np.array([[1, dt], [0, 1]], np.float32)
-        # Kalman predict
-        self._kalman.predict()
-        # Kalman correct with sample
-        self._kalman.correct(np.array([[hand_screen_y]], np.float32))
-        # Append filtered state to history
-        self.filtered_history.append(self._kalman.statePost)
+        if hand_screen_y:
+            # If there's been any previous samples
+            if len(self.ts_history) > 0:
+                # Time delta from last sample
+                dt = self.ts_history[-1] - ts
+                # Update transition matrix to account for varying time delta
+                self._kalman.transitionMatrix = np.array([[1, dt], [0, 1]], np.float32)
+            # Kalman predict
+            self._kalman.predict()
+            # Kalman correct with sample
+            self._kalman.correct(np.array([[hand_screen_y]], np.float32))
+            # Append filtered state to history
+            self.filtered_history.append(self._kalman.statePost)
+        else:
+            self.filtered_history.append(None)
 
         # Append ts and actual measurement to history
         self.ts_history.append(ts)
         self.measured_history.append(hand_screen_y)
 
-        # Get filtered samples from within time window of interest
-        analysis_window_samples = self.filtered_from_last_n_secs(self._window_secs)
-        # If haven't done this work too recently (expensive), update predictions
+        # Update predictions, if haven't done this work too recently (expensive)
         if time.time() - self._time_last_prediction >= REPREDICT_INTERVAL_SECS:
-            self._update_predictions(ts, analysis_window_samples)
             self._time_last_prediction = time.time()
+            self._update_predictions(ts)
 
     def filtered_from_last_n_secs(self, n: float) -> list[(float, np.array)]:
         """
-        Get a list of all the predicted (smoothed) states from the last n seconds.
+        Get a list of all the predicted (smoothed) states from the last n seconds,
+        excluding samples where there is none.
         Returns a list of (ts, pred), where pred is 2x1 np array of y, velocity
         """
         if len(self.ts_history) == 0:
@@ -83,15 +85,19 @@ class MotionAnalyzer:
         return [
             (self.ts_history[i], self.filtered_history[i])
             for i in range(cutoff, len(self.ts_history))
+            if self.filtered_history[i] is not None
         ]
 
-    def _update_predictions(self, ts: float, window_samples: np.array):
+    def _update_predictions(self, ts: float):
         # Number of evenly spaced samples to resample provided height data points into
         NUM_RESAMPLES = 50
 
         # RESET PREDICTIONS
         self.est_phase = None
         self.move_eta = None
+
+        # Get filtered samples from within time window of interest
+        window_samples = self.filtered_from_last_n_secs(self._window_secs)
 
         # If too few samples, don't bother
         if len(window_samples) < 5:
