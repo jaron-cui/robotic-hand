@@ -16,7 +16,7 @@ def annotate_frame(frame: np.array, recognizer: HandRecognizer):
     if landmarks:
         _draw_hand_landmarks(frame, landmarks)
 
-    bbox = recognizer.get_hand_bbox_camera()
+    bbox = recognizer.tracker.get_hand_bbox_camera(frame.shape)
     if bbox:
         box_color = (
             (255, 255, 255) if recognizer.is_hand_recognized() else (0, 208, 255)

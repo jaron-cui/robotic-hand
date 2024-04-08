@@ -13,6 +13,7 @@ from typing import Type
 from queue import Queue
 
 from . import _util
+from .tracker import Tracker
 from .events import *
 from .gestures import HandGesture
 from .motion_analysis import MotionAnalyzer
@@ -20,7 +21,7 @@ from .motion_analysis import MotionAnalyzer
 
 DEFAULT_MODEL_PATH = "./models/gesture_recognizer_rps.task"
 TRACKER_INIT_MIN_INTERVAL_SECS = 0.3
-TRACKER_UPDATE_MIN_INTERVAL_SECS = 0.1
+TRACKER_UPDATE_MIN_INTERVAL_SECS = 0.15
 TRACKER_EXPIRE_TIME_SECS = 1
 
 
@@ -58,7 +59,6 @@ class HandRecognizer:
 
         # Dict of event type to its set of callbacks
         self._events = {
-            RecognitionResultsUpdated: set(),
             GameOffered: set(),
             Swinging: set(),
             GesturePlayed: set(),
@@ -66,17 +66,11 @@ class HandRecognizer:
         }
 
         # Tracker to fill in for MediaPipe when its hand tracking fails
-        self._hand_tracker = cv.TrackerCSRT.create()
-        # In screen coords, the amount of padding to add around hand region to use as ROI
-        self._tracking_roi_padding = tracking_roi_padding
-        # Whether this track has been initialized
-        self._tracking_inited = False
-        # The most recent updated ROI by the tracker
-        self._last_tracking_roi = None
-
-        # Time that these were last performed. Recorded for limiting rate.
-        self._last_tracking_init_time = time.time()
-        self._last_tracking_update_time = time.time()
+        self.tracker = Tracker(
+            tracking_roi_padding,
+            TRACKER_INIT_MIN_INTERVAL_SECS,
+            TRACKER_UPDATE_MIN_INTERVAL_SECS,
+        )
 
     def __enter__(self):
         self.mp_recognizer = GestureRecognizer.create_from_options(
@@ -98,41 +92,27 @@ class HandRecognizer:
             )
 
             self._last_ts = result_ts_ms / 1000
-            [
-                cb(RecognitionResultsUpdated(self._last_ts))
-                for cb in self._events[RecognitionResultsUpdated]
-            ]
 
-            if self.get_hand_y() is not None:
-                self.motion_predictor.add_sample(self._last_ts, self.get_hand_y())
-
-            # If MediaPipe recognized a hand, and haven't inited tracker too recently
-            if (
-                self.is_hand_recognized()
-                and time.time() - self._last_tracking_init_time
-                >= TRACKER_INIT_MIN_INTERVAL_SECS
-            ):
+            # If MediaPipe recognized a hand
+            if self.is_hand_recognized():
                 # Reinit tracker with latest frame and the hand bbox
-                self._last_tracking_init_time = time.time()
-                self._hand_tracker.init(
-                    self._last_frame.numpy_view(), self.get_hand_bbox_camera()
+                self.tracker.init_with_landmarks(
+                    self._last_frame.numpy_view(), self.get_hand_landmarks()
                 )
-                self._tracking_inited = True
                 self._last_hand_found_ts = self._last_ts
-            # Elif tracking is inited, and haven't updated too recently,
-            elif (
-                self._tracking_inited
-                and time.time() - self._last_tracking_update_time
-                >= TRACKER_UPDATE_MIN_INTERVAL_SECS
-            ):
+            # Elif tracking is inited
+            elif self.tracker.is_inited():
                 # ...and it hasn't been to long since MediaPipe last found a hand (tracking likely still valid)
                 if time.time() - self._last_hand_found_ts <= TRACKER_EXPIRE_TIME_SECS:
-                    self._last_tracking_update_time = time.time()
-                    ok, bbox = self._hand_tracker.update(self._last_frame.numpy_view())
-                    self._last_tracking_roi = list(bbox) if ok else None
+                    self.tracker.update(self._last_frame.numpy_view())
                 # If exceeded, stop using tracking
                 else:
-                    self._last_tracking_roi = None
+                    self.tracker.stop()
+
+            if self.tracker.get_hand_y():
+                self.motion_predictor.add_sample(
+                    self._last_ts, self.tracker.get_hand_y()
+                )
 
     def is_hand_recognized(self) -> bool:
         """
@@ -167,39 +147,6 @@ class HandRecognizer:
             return self._last_result.gestures[0][0].score
         else:
             return None
-
-    def get_hand_y(self) -> float | None:
-        """
-        Get the latest Y (vertical) position of the hand in screen space, if any.
-        Ranges from 0.0 (top of screen) to 1.0 (bottom of screen).
-        Position may be based on direct recognition or tracking, or None if neither is available.
-        """
-        bbox = self.get_hand_bbox_screen()
-        if bbox:
-            return bbox[1] + bbox[3] / 2
-        else:
-            return None
-
-    def get_hand_bbox_screen(self) -> list[float] | None:
-        if self.is_hand_recognized():
-            landmarks = self.get_hand_landmarks()
-            return _util.make_screen_roi_from_landmarks(
-                landmarks, self._tracking_roi_padding
-            )
-        elif self._last_tracking_roi:
-            return _util.bbox_cam_to_screen(
-                self._last_tracking_roi, self._last_frame.numpy_view().shape
-            )
-        else:
-            return None
-
-    def get_hand_bbox_camera(self) -> list[int] | None:
-        if self.is_hand_recognized():
-            return _util.bbox_screen_to_cam(
-                self.get_hand_bbox_screen(), self._last_frame.numpy_view().shape
-            )
-        else:
-            return self._last_tracking_roi
 
     def get_hand_landmarks(self) -> list[HandLandmark] | None:
         return (

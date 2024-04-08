@@ -5,11 +5,6 @@ from dataclasses import dataclass
 from .gestures import HandGesture
 
 
-@dataclass
-class RecognitionResultsUpdated:
-    ts: float
-
-
 class GameOffered:
     """
     Detected the player initiating a game, by holding a fist still at the camera.
