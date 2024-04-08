@@ -2,7 +2,6 @@ import cv2 as cv
 
 from gui import RecognizerFigure, annotate_frame
 from recognizer import HandRecognizer
-from threading import Thread
 
 import time
 from argparse import ArgumentParser

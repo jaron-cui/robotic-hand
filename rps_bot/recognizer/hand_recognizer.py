@@ -65,7 +65,7 @@ class HandRecognizer:
         self._last_tracking_init_time = time.time()
         self._last_tracking_update_time = time.time()
 
-        self.motion_predictor = MotionAnalyzer(3)
+        self.motion_predictor = MotionAnalyzer(5)
 
     def __enter__(self):
         self.mp_recognizer = GestureRecognizer.create_from_options(
