@@ -1,7 +1,9 @@
 import cv2 as cv
 
-from .gui import RecognizerFigure, annotate_frame
+from .gui import annotate_frame
 from .recognizer import HandRecognizer
+from .gui.recognizer_qt import RecognizerFigureQt
+from .gui.recognizer import RecognizerFigure
 
 import time
 from argparse import ArgumentParser
@@ -21,6 +23,7 @@ def main():
     video_cap.set(cv.CAP_PROP_FRAME_WIDTH, 1920 / 2)
     video_cap.set(cv.CAP_PROP_FRAME_HEIGHT, 1080 / 2)
 
+    # fig = RecognizerFigureQt()
     fig = RecognizerFigure()
     fig.show()
 
@@ -46,8 +49,6 @@ def main():
             # Quit if Q pressed
             if cv.waitKey(1) == ord("q"):
                 break
-
-    fig.close()
 
 
 if __name__ == "__main__":
