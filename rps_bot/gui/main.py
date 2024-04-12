@@ -1,10 +1,13 @@
 import matplotlib.pyplot as plt
+import matplotlib.style as mplstyle
 
 import time
 
 from rps_bot.recognizer import HandRecognizer
 from .game_state import LiveGameStatePlot
 from rps_bot.game_flow.controller import GameController
+
+mplstyle.use(["fast"])
 
 
 class GuiMainFigure:
@@ -38,8 +41,7 @@ class GuiMainFigure:
         )
 
         # Draw
-        self.fig.canvas.draw()
-        self.fig.canvas.flush_events()
+        self.fig.canvas.draw_idle()
 
     def close(self):
         plt.close(self.fig)

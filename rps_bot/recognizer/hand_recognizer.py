@@ -21,7 +21,7 @@ from .motion_analysis import MotionAnalyzer
 
 DEFAULT_MODEL_PATH = "./models/gesture_recognizer_rps.task"
 TRACKER_INIT_MIN_INTERVAL_SECS = 0.3
-TRACKER_UPDATE_MIN_INTERVAL_SECS = 0.15
+TRACKER_UPDATE_MIN_INTERVAL_SECS = 0.2
 TRACKER_EXPIRE_TIME_SECS = 1
 
 

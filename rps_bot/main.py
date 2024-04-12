@@ -51,8 +51,6 @@ def main():
             if cv.waitKey(1) == ord("q"):
                 break
 
-    fig.close()
-
 
 if __name__ == "__main__":
     main()

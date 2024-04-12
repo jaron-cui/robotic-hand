@@ -18,9 +18,16 @@ def annotate_frame(frame: np.array, recognizer: HandRecognizer):
 
     bbox = recognizer.tracker.get_hand_bbox_camera(frame.shape)
     if bbox:
-        box_color = (
-            (255, 255, 255) if recognizer.is_hand_recognized() else (0, 208, 255)
-        )
+        if recognizer.is_hand_recognized():
+            box_color = (255, 255, 255)
+        else:
+            box_color = (0, 208, 255)
+            filtered_sample = recognizer.motion_predictor.filtered_history[-1]
+            if filtered_sample is not None:
+                filtered_height = int(filtered_sample[0] * frame.shape[0])
+                bbox_center_y = bbox[1] + bbox[3] // 2
+                diff_y = filtered_height - bbox_center_y
+                bbox = (bbox[0], bbox[1] + diff_y, bbox[2], bbox[3])
         cv.rectangle(frame, bbox, box_color, 2, 1)
 
 
