@@ -1,7 +1,8 @@
 import cv2 as cv
 
-from .gui import RecognizerFigure, annotate_frame
+from .gui import GuiMainFigure, annotate_frame
 from .recognizer import HandRecognizer
+from .game_flow.controller import GameController
 
 import time
 from argparse import ArgumentParser
@@ -21,10 +22,11 @@ def main():
     video_cap.set(cv.CAP_PROP_FRAME_WIDTH, 1920 / 2)
     video_cap.set(cv.CAP_PROP_FRAME_HEIGHT, 1080 / 2)
 
-    fig = RecognizerFigure()
+    fig = GuiMainFigure()
     fig.show()
 
     with HandRecognizer() as recognizer:
+        controller = GameController(recognizer)
         while True:
             # Timestamp
             ts = time.time()
@@ -38,7 +40,9 @@ def main():
 
             recognizer.next_frame(frame, ts)
 
-            fig.update(recognizer)
+            controller.update()
+
+            fig.update(recognizer, controller)
 
             annotate_frame(frame, recognizer)
             cv.imshow("Camera", frame)

@@ -2,21 +2,23 @@ import matplotlib.pyplot as plt
 
 import time
 
-from rps_bot.recognizer import HandRecognizer, HandGesture
+from rps_bot.recognizer import HandRecognizer
+from .game_state import LiveGameStatePlot
+from rps_bot.game_flow.controller import GameController
 
 
-class RecognizerFigure:
+class GuiMainFigure:
     def __init__(self):
         self.fig, axs = plt.subplots(3, 1, height_ratios=[3, 1, 1])
         self.hand_height_plt = LiveDataPlot(axs[0], min_y=1, max_y=0, time_range_secs=3)
-        self.gesture_plt = LiveGesturePlot(axs[1])
+        self.game_state_plt = LiveGameStatePlot(axs[1])
         self.motion_pred_plot = LiveMotionPredictionPlot(axs[2])
 
     def show(self):
         plt.ion()
         plt.show()
 
-    def update(self, recognizer: HandRecognizer):
+    def update(self, recognizer: HandRecognizer, controller: GameController):
         preds = recognizer.motion_predictor.filtered_from_last_n_secs(3)
         ts = [p[0] for p in preds]
         y = [p[1][0] for p in preds]
@@ -27,9 +29,7 @@ class RecognizerFigure:
         peaks = [p.ts for p in recognizer.motion_predictor.turning_points]
         self.hand_height_plt.axvlines(peaks)
 
-        gesture = recognizer.get_gesture()
-        gesture_score = recognizer.get_gesture_score()
-        self.gesture_plt.update_gesture(gesture, gesture_score)
+        self.game_state_plt.update(controller)
 
         eta = recognizer.motion_predictor.move_eta
         self.motion_pred_plot.update_phase(
@@ -79,25 +79,6 @@ class LiveDataPlot:
             line.remove()
         for val in x:
             self.ax.axvline(val, color="red")
-
-
-class LiveGesturePlot:
-    def __init__(self, ax: plt.Axes, **plot_kwargs):
-        self.ax = ax
-        self.text = ax.text(
-            0.5,
-            0.5,
-            "Gesture Prediction: None yet",
-            fontsize="large",
-            horizontalalignment="center",
-        )
-        self.ax.axis("off")
-
-    def update_gesture(self, gesture: HandGesture | None, score: float | None):
-        if gesture is None:
-            self.text.set_text(f"Gesture Prediction: (No prediction)")
-        else:
-            self.text.set_text(f"Gesture Prediction: {gesture.value} ({score:.2f})")
 
 
 class LiveMotionPredictionPlot:
