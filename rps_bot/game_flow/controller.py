@@ -5,6 +5,7 @@ import time
 
 from rps_bot.recognizer import HandRecognizer
 from rps_bot.recognizer.gestures import GameResult, HandGesture
+from rps_bot.hand_serial import RPSSerial
 
 WAIT_AFTER_SHOOT = 1.5
 MAX_WAIT_FOR_GESTURE_RECOGNITION = 2
@@ -15,6 +16,7 @@ class GameController:
     def __init__(self, recognizer: HandRecognizer):
         self.recognizer = recognizer
         self.state = GameStage.WAITING
+        self.serial = RPSSerial()
 
     def update(self):
         match self.state:
@@ -50,9 +52,16 @@ class GameController:
 
         # Pick the move to play
         bot_move = random.choice(
-            [HandGesture.PAPER, HandGesture.ROCK, HandGesture.SCISSORS]
+            [HandGesture.ROCK, HandGesture.PAPER, HandGesture.SCISSORS]
         )
-        # ...control update
+        # Set control to make gesture
+        match bot_move:
+            case HandGesture.ROCK:
+                self.serial.rock()
+            case HandGesture.PAPER:
+                self.serial.paper()
+            case HandGesture.SCISSORS:
+                self.serial.scissors()
 
         # Transition to waiting for result to be recognized
         self.state = PendingState(time.time(), bot_move)
@@ -88,6 +97,9 @@ class GameController:
 
     def update_game_end(self):
         if time.time() - self.state.ts_game_end >= GAME_RESULTS_PAUSE_SECS:
+            # Reset robot hand gesture
+            self.serial.paper()
+            # Transition back to waiting state
             self.state = GameStage.WAITING
 
 
