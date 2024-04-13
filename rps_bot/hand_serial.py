@@ -1,8 +1,9 @@
 import serial as ps
 
 class RPSSerial():
-    def __init__(self, port='COM5', baudrate=250000):
+    def __init__(self, port='COM5', eport='COM10', baudrate=250000):
         self.ser = ps.Serial(port, baudrate)
+        self.eser = ps.Serial(eport, baudrate)
         self.recalibrate()
 
 
@@ -13,7 +14,7 @@ class RPSSerial():
         self.ser.write(b'ZERO:')
     
     def recalibrate_elbow(self):
-        self.ser.write(b'ZERO:')
+        self.eser.write(b'ZERO:')
 
     def rock(self):
         for i in range(4):
@@ -30,7 +31,7 @@ class RPSSerial():
     def elbowPos(self, pos):
         TICK_MULT = 2000/360
         pos = int(pos * TICK_MULT)
-        self.ser.write(b'5: GOAL: %s'.format(pos))
+        self.eser.write(b'5: GOAL: %s'.format(pos))
 
     def read(self, finger):
         self.ser.write(b'%s: GET: POS'.format(finger))
@@ -48,3 +49,4 @@ class RPSSerial():
 
     def close(self):
         self.ser.close()
+        self.eser.close()
