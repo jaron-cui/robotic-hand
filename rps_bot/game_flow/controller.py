@@ -10,6 +10,9 @@ from rps_bot.hand_serial import RPSSerial
 WAIT_AFTER_SHOOT = 1.5
 MAX_WAIT_FOR_GESTURE_RECOGNITION = 2
 GAME_RESULTS_PAUSE_SECS = 2.5
+# How much in advance control signals should be sent before the actual require time
+# i.e. the control delay.
+CONTROL_PREEMPT_SECS = 0.5
 
 
 class GameController:
@@ -44,7 +47,9 @@ class GameController:
 
         if est_phase is None or est_phase < 0.5:
             self.state = GameStage.WAITING
-        elif self.recognizer.motion_predictor.est_phase >= 4:
+        elif self.recognizer.motion_predictor.est_phase >= self.target_shoot_phase(
+            CONTROL_PREEMPT_SECS
+        ):
             self.shoot()
 
     def shoot(self):
@@ -101,6 +106,13 @@ class GameController:
             self.serial.paper()
             # Transition back to waiting state
             self.state = GameStage.WAITING
+
+    def target_shoot_phase(self, control_delay: float):
+        """"""
+        control_delay_phases = (
+            control_delay / self.recognizer.motion_predictor.est_period
+        )
+        return 4 - control_delay_phases
 
 
 class GameStage(Enum):
