@@ -9,7 +9,7 @@ class RPSSerial():
 
     def recalibrate(self):
         for i in range(4):
-            self.ser.write(b'%s: GOAL: 5000'.format(i+1))
+            self.ser.write(b'%s: GOAL: -5000'.format(i+1))
         self.ser.write(b'ZERO:')
 
     def rock(self):
