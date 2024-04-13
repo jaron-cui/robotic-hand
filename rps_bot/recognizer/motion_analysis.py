@@ -18,6 +18,9 @@ class MotionAnalyzer:
     def __init__(self, window_secs: float):
         # How far back analysis should consider samples from
         self._window_secs = window_secs
+        # The window for samples must start at least this late
+        # Used to prevent detection of earlier, unrelated/abandoned motions
+        self.min_window_start = 0
 
         # Most recent timestamps, direct height measurements, and Kalman filtered heights, velocities
         # At corresponding indicies
@@ -72,7 +75,9 @@ class MotionAnalyzer:
             self._time_last_prediction = time.time()
             self._update_predictions(ts)
 
-    def filtered_from_last_n_secs(self, n: float) -> list[(float, np.array)]:
+    def filtered_from_last_n_secs(
+        self, n: float, limit_window: bool = False
+    ) -> list[(float, np.array)]:
         """
         Get a list of all the predicted (smoothed) states from the last n seconds,
         excluding samples where there is none.
@@ -81,6 +86,8 @@ class MotionAnalyzer:
         if len(self.ts_history) == 0:
             return []
         cutoff_ts = self.ts_history[-1] - n
+        if limit_window:
+            cutoff_ts = max(cutoff_ts, self.min_window_start)
         cutoff = bisect(self.ts_history, cutoff_ts)
         return [
             (self.ts_history[i], self.filtered_history[i])
@@ -97,7 +104,9 @@ class MotionAnalyzer:
         self.move_eta = None
 
         # Get filtered samples from within time window of interest
-        window_samples = self.filtered_from_last_n_secs(self._window_secs)
+        window_samples = self.filtered_from_last_n_secs(
+            self._window_secs, limit_window=True
+        )
 
         # If too few samples, don't bother
         if len(window_samples) < 5:
@@ -134,14 +143,6 @@ class MotionAnalyzer:
         # Store in field
         self.turning_points = turning_points
 
-        # If there's a large time gap between any pair of points,
-        # cut off points before it (they may be from a previous attempt)
-        # TODO: Currently hardcoded cutoff...
-        for i in range(len(turning_points) - 1, 0, -1):
-            if turning_points[i].ts - turning_points[i - 1].ts > 0.8:
-                turning_points = turning_points[i:]
-                break
-
         # Whether each point alternates between peak and valley
         is_alternating = len(turning_points) > 0 and all(
             a.type != b.type for a, b in pairwise(turning_points)
@@ -164,7 +165,7 @@ class MotionAnalyzer:
         # If at least 2 points, can estimate the period of the motion
         if len(turning_points) >= 2:
             est_period = (
-                (turning_points[-1][0] - turning_points[0][0])
+                (turning_points[-1].ts - turning_points[0].ts)
                 / (len(turning_points) - 1)
                 * 2
             )
@@ -174,10 +175,13 @@ class MotionAnalyzer:
 
         # CHECK WHETHER MOTION MAY STILL BE IN PROGRESS
         # Time since the last turning point that's been detected
-        time_since_last_point = ts - turning_points[-1][0]
+        time_since_last_point = ts - turning_points[-1].ts
         # If it's been more than a phase since then, assume the motion stopped...
         # unless we're already very close to the end, in which case just go with it
         if time_since_last_point > est_period and len(turning_points) < 6:
+            # Also, don't look before the last point again, to prevent accidentally
+            # combining peaks from different attempts
+            self.min_window_start = turning_points[-1].ts
             return
 
         # ESTIMATE PHASE - each point adds half a cycle, then extrapolate for time since last point
