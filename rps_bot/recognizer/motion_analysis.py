@@ -134,6 +134,14 @@ class MotionAnalyzer:
         # Store in field
         self.turning_points = turning_points
 
+        # If there's a large time gap between any pair of points,
+        # cut off points before it (they may be from a previous attempt)
+        # TODO: Currently hardcoded cutoff...
+        for i in range(len(turning_points) - 1, 0, -1):
+            if turning_points[i].ts - turning_points[i - 1].ts > 0.8:
+                turning_points = turning_points[i:]
+                break
+
         # Whether each point alternates between peak and valley
         is_alternating = len(turning_points) > 0 and all(
             a.type != b.type for a, b in pairwise(turning_points)
@@ -167,8 +175,9 @@ class MotionAnalyzer:
         # CHECK WHETHER MOTION MAY STILL BE IN PROGRESS
         # Time since the last turning point that's been detected
         time_since_last_point = ts - turning_points[-1][0]
-        # If it's been more than a phase since then, assume the motion stopped
-        if time_since_last_point > est_period:
+        # If it's been more than a phase since then, assume the motion stopped...
+        # unless we're already very close to the end, in which case just go with it
+        if time_since_last_point > est_period and len(turning_points) < 6:
             return
 
         # ESTIMATE PHASE - each point adds half a cycle, then extrapolate for time since last point
