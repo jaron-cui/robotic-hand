@@ -11,6 +11,9 @@ class RPSSerial():
         for i in range(4):
             self.ser.write(b'%s: GOAL: -5000'.format(i+1))
         self.ser.write(b'ZERO:')
+    
+    def recalibrate_elbow(self):
+        self.ser.write(b'ZERO:')
 
     def rock(self):
         for i in range(4):
@@ -23,6 +26,11 @@ class RPSSerial():
     def scissors(self):
         for i in range(2, 4):
             self.ser.write(b'%s: GOAL: 2000'.format(i+1))
+
+    def elbowPos(self, pos):
+        TICK_MULT = 2000/360
+        pos = int(pos * TICK_MULT)
+        self.ser.write(b'5: GOAL: %s'.format(pos))
 
     def read(self, finger):
         self.ser.write(b'%s: GET: POS'.format(finger))
