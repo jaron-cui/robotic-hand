@@ -19,30 +19,30 @@ class GameController:
     def update(self):
         match self.state:
             case GameStage.WAITING:
-                if (
-                    self.recognizer.motion_predictor.est_phase
-                    and self.recognizer.motion_predictor.est_phase > 0.5
-                ):
-                    self.state = GameStage.PLAYING
-                    self.update_movement()
+                self.update_waiting()
             case GameStage.PLAYING:
-                if (
-                    self.recognizer.motion_predictor.est_phase
-                    and self.recognizer.motion_predictor.est_phase > 0.5
-                ):
-                    self.update_movement()
-                else:
-                    self.state = GameStage.WAITING
+                self.update_playing()
             case PendingState(_):
-                self.try_determine_results()
-            case GameEndState(ts_game_end, _, _, _, _):
-                if time.time() - ts_game_end >= GAME_RESULTS_PAUSE_SECS:
-                    self.state = GameStage.WAITING
+                self.update_pending()
+            case GameEndState(_):
+                self.update_game_end()
 
-    def update_movement(self):
-        # ... control update
+    def update_waiting(self):
+        if (
+            self.recognizer.motion_predictor.est_phase
+            and self.recognizer.motion_predictor.est_phase > 0.5
+        ):
+            self.state = GameStage.PLAYING
+
+    def update_playing(self):
         assert self.state == GameStage.PLAYING
-        if self.recognizer.motion_predictor.est_phase >= 4:
+
+        est_phase = self.recognizer.motion_predictor.est_phase
+        # ... control update
+
+        if est_phase is None or est_phase < 0.5:
+            self.state = GameStage.WAITING
+        elif self.recognizer.motion_predictor.est_phase >= 4:
             self.shoot()
 
     def shoot(self):
@@ -57,7 +57,7 @@ class GameController:
         # Transition to waiting for result to be recognized
         self.state = PendingState(time.time(), bot_move)
 
-    def try_determine_results(self):
+    def update_pending(self):
         assert isinstance(self.state, PendingState)
 
         time_since_shoot = time.time() - self.state.ts_shoot
@@ -66,6 +66,7 @@ class GameController:
         if time_since_shoot < WAIT_AFTER_SHOOT:
             return
 
+        # Try to determine result
         # Check if a gesture is recognized
         player_move = self.recognizer.get_gesture()
         # If so, compare against own move
@@ -84,6 +85,10 @@ class GameController:
             self.state = GameEndState(
                 time.time(), self.state.bot_move, player_move, GameResult.UNKNOWN, None
             )
+
+    def update_game_end(self):
+        if time.time() - self.state.ts_game_end >= GAME_RESULTS_PAUSE_SECS:
+            self.state = GameStage.WAITING
 
 
 class GameStage(Enum):

@@ -96,9 +96,6 @@ class LiveMotionPredictionPlot:
         # Hide the y-axis
         ax.yaxis.set_visible(False)
 
-        # Adjust layout
-        # ax.tigh
-
     def update_phase(self, phase: float, eta: float):
         # Fill the bar with the specified percentage
         self.bar[0].set_width(phase)
