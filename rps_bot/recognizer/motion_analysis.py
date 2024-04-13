@@ -164,28 +164,30 @@ class MotionAnalyzer:
         # ESTIMATE PERIOD
         # If at least 2 points, can estimate the period of the motion
         if len(turning_points) >= 2:
-            est_period = (
+            self.est_period = (
                 (turning_points[-1].ts - turning_points[0].ts)
                 / (len(turning_points) - 1)
                 * 2
             )
         # Otherwise, assume a default
         else:
-            est_period = DEFAULT_EST_PERIOD
+            self.est_period = DEFAULT_EST_PERIOD
 
         # CHECK WHETHER MOTION MAY STILL BE IN PROGRESS
         # Time since the last turning point that's been detected
         time_since_last_point = ts - turning_points[-1].ts
         # If it's been more than a phase since then, assume the motion stopped...
         # unless we're already very close to the end, in which case just go with it
-        if time_since_last_point > est_period and len(turning_points) < 6:
+        if time_since_last_point > self.est_period and len(turning_points) < 6:
             # Also, don't look before the last point again, to prevent accidentally
             # combining peaks from different attempts
             self.min_window_start = turning_points[-1].ts
             return
 
         # ESTIMATE PHASE - each point adds half a cycle, then extrapolate for time since last point
-        self.est_phase = len(turning_points) * 0.5 + time_since_last_point / est_period
+        self.est_phase = (
+            len(turning_points) * 0.5 + time_since_last_point / self.est_period
+        )
 
         # ESTIMATE TIME TO PLAY MOVE (time of 4th valley)
-        self.move_eta = ts + (4 - self.est_phase) * est_period
+        self.move_eta = ts + (4 - self.est_phase) * self.est_period
