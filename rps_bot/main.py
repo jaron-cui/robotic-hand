@@ -26,7 +26,7 @@ def main():
     fig.show()
 
     with HandRecognizer() as recognizer:
-        controller = GameController(recognizer)
+        controller = GameController(recognizer, use_serial=True)
         while True:
             # Timestamp
             ts = time.time()
