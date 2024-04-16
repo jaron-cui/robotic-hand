@@ -84,6 +84,19 @@ class RPSSerial:
         for finger in [Finger.MIDDLE, Finger.INDEX]:
             self.__extend_finger(finger)
         self.__trigger_movement()
+        
+    def winPose(self):
+        for finger in [Finger.PINKY, Finger.INDEX]:
+            self.__extend_finger(finger)
+        for finger in [Finger.MIDDLE, Finger.RING]:
+            self.__retract_finger(finger)
+        self.__trigger_movement()
+        
+    def losePose(self):
+        for finger in [Finger.MIDDLE]:
+            self.__extend_finger(finger)
+        for finger in [Finger.PINKY, Finger.INDEX, Finger.RING]:
+            self.__retract_finger(finger)
 
     def __bob(self):
         self.begin_elbow_movement(60)
