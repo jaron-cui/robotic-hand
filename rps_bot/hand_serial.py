@@ -54,7 +54,7 @@ class RPSSerial:
     def recalibrate(self):
         self.elbow_control.write(b'ZERO:')
         for finger in FOUR_FINGERS:
-            self.__set_finger_position(finger, int(FINGER_RETRACTION_MAX * 1.1))
+            self.__set_finger_position(finger, int(FINGER_RETRACTION_MAX * 1.8))
         self.__trigger_movement()
         time.sleep(3)
         self.__zero()
@@ -86,8 +86,8 @@ class RPSSerial:
         self.__trigger_movement()
 
     def __bob(self):
-        self.begin_elbow_movement(20)
-        for i in range(50):
+        self.begin_elbow_movement(30)
+        for i in range(80):
             if self.quit_bob_thread:
                 return
             time.sleep(0.01)
