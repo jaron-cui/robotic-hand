@@ -52,7 +52,10 @@ class GameController:
             self.state = GameStage.WAITING
         else:
             self.bob_if_needed()
-            if est_phase >= self.delay_compensate_phase(4, CONTROL_PREEMPT_SECS):
+            if (
+                self.state.started_shoot_move is None
+                and est_phase >= self.delay_compensate_phase(4, CONTROL_PREEMPT_SECS)
+            ):
                 self.start_shoot_movement()
             elif est_phase >= 4:
                 self.shoot()
