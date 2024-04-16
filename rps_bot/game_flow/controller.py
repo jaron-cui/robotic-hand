@@ -48,12 +48,14 @@ class GameController:
             # Reset robot hand gesture
             if self.serial:
                 self.serial.paper()
-        elif self.state.started_shoot_move is None:
+
+            self.state = GameStage.WAITING
+        else:
             self.bob_if_needed()
             if est_phase >= self.delay_compensate_phase(4, CONTROL_PREEMPT_SECS):
                 self.start_shoot_movement()
-        elif est_phase >= 4:
-            self.shoot()
+            elif est_phase >= 4:
+                self.shoot()
 
     def bob_if_needed(self):
         assert isinstance(self.state, PlayingState)
