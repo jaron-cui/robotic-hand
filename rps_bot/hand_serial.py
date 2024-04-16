@@ -29,9 +29,11 @@ class RPSSerial:
         self.elbow_control = ps.Serial(eport, baudrate)
         self.stop = threading.Lock()
         self.stop.acquire()
-        thread = threading.Thread(target=lambda: read_forever(self.elbow_control, self.stop))
-        thread.start()
-        # self.recalibrate()
+        debug_thread = threading.Thread(target=lambda: read_forever(self.elbow_control, self.stop))
+        debug_thread.start()
+
+        self.quit_bob_thread = False
+        self.bob_thread = None
 
     def __set_finger_position(self, finger: Finger, position: int):
         self.finger_control.write(f'{finger.value}|GOAL: {position}\n'.encode('utf-8'))
@@ -82,6 +84,22 @@ class RPSSerial:
         for finger in [Finger.MIDDLE, Finger.INDEX]:
             self.__extend_finger(finger)
         self.__trigger_movement()
+
+    def __bob(self):
+        self.begin_elbow_movement(20)
+        for i in range(50):
+            if self.quit_bob_thread:
+                return
+            time.sleep(0.01)
+        self.begin_elbow_movement(0)
+
+    def bob(self):
+        self.quit_bob_thread = True
+        if self.bob_thread is not None:
+            self.bob_thread.join()
+        self.quit_bob_thread = False
+        self.bob_thread = threading.Thread(target=lambda: self.__bob())
+        self.bob_thread.start()
 
     def begin_elbow_movement(self, pos):
         TICK_MULT = 2000/360
