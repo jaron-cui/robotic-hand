@@ -12,7 +12,7 @@ MAX_WAIT_FOR_GESTURE_RECOGNITION = 2
 GAME_RESULTS_PAUSE_SECS = 3
 # How much in advance control signals should be sent before the actual require time
 # i.e. the control delay.
-CONTROL_PREEMPT_PHASES = 2
+CONTROL_PREEMPT_SECS = 2
 
 
 class GameController:
@@ -37,28 +37,42 @@ class GameController:
             self.recognizer.motion_predictor.est_phase
             and self.recognizer.motion_predictor.est_phase > 0.5
         ):
-            self.state = PlayingState(started_bot_move=None)
+            self.state = PlayingState(started_shoot_move=None)
 
     def update_playing(self):
         assert isinstance(self.state, PlayingState)
 
         est_phase = self.recognizer.motion_predictor.est_phase
-        # ... control update
 
         if est_phase is None or est_phase < 0.5:
             self.state = GameStage.WAITING
+        elif self.state.started_shoot_move is None:
+            self.bob_if_needed()
         elif (
-            self.state.started_bot_move is None
+            self.state.started_shoot_move is None
             and self.recognizer.motion_predictor.est_phase
-            >= self.target_shoot_phase(CONTROL_PREEMPT_PHASES)
+            >= self.delay_compensate_phase(4, CONTROL_PREEMPT_SECS)
         ):
-            self.start_movement()
+            self.start_shoot_movement()
         elif self.recognizer.motion_predictor.est_phase >= 4:
             self.shoot()
 
-    def start_movement(self):
+    def bob_if_needed(self):
+        assert isinstance(self.state, PlayingState)
+
+        if (
+            self.state.last_bob_time is None
+            or time.time() - self.state.last_bob_time
+            >= self.recognizer.motion_predictor.est_period
+        ):
+            self.state.last_bob_time = time.time()
+            if self.serial:
+                self.serial.bob()
+
+    def start_shoot_movement(self):
         assert (
-            isinstance(self.state, PlayingState) and self.state.started_bot_move is None
+            isinstance(self.state, PlayingState)
+            and self.state.started_shoot_move is None
         )
 
         # Pick the move to play
@@ -73,17 +87,17 @@ class GameController:
                 case HandGesture.SCISSORS:
                     self.serial.scissors()
 
-        self.state.started_bot_move = bot_move
+        self.state.started_shoot_move = bot_move
 
     def shoot(self):
         assert isinstance(self.state, PlayingState)
 
         # If haven't started bot movement yet (no preempt), do it now
-        if self.state.started_bot_move is None:
-            self.start_movement()
+        if self.state.started_shoot_move is None:
+            self.start_shoot_movement()
 
         # Transition to waiting for result to be recognized
-        self.state = PendingState(time.time(), self.state.started_bot_move)
+        self.state = PendingState(time.time(), self.state.started_shoot_move)
 
     def update_pending(self):
         assert isinstance(self.state, PendingState)
@@ -122,12 +136,13 @@ class GameController:
             # Transition back to waiting state
             self.state = GameStage.WAITING
 
-    def target_shoot_phase(self, control_delay: float):
+    def delay_compensate_phase(self, phase: int, control_delay: float):
         """"""
         control_delay_phases = (
             control_delay / self.recognizer.motion_predictor.est_period
         )
-        return 4 - control_delay_phases
+        # Clamp neg values to 0
+        return max(0, phase - control_delay_phases)
 
 
 class GameStage(Enum):
@@ -139,7 +154,8 @@ class GameStage(Enum):
 
 @dataclass
 class PlayingState:
-    started_bot_move: HandGesture | None
+    started_shoot_move: HandGesture | None
+    last_bob_time = None
 
 
 @dataclass
