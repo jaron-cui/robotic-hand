@@ -7,16 +7,16 @@ from rps_bot.recognizer import HandRecognizer
 from rps_bot.recognizer.gestures import GameResult, HandGesture
 from rps_bot.hand_serial import RPSSerial
 
-WAIT_AFTER_SHOOT = 1.5
+WAIT_AFTER_SHOOT = 2
 MAX_WAIT_FOR_GESTURE_RECOGNITION = 2
-GAME_RESULTS_PAUSE_SECS = 2.5
+GAME_RESULTS_PAUSE_SECS = 3
 # How much in advance control signals should be sent before the actual require time
 # i.e. the control delay.
-CONTROL_PREEMPT_SECS = 2
+CONTROL_PREEMPT_PHASES = 2
 
 
 class GameController:
-    def __init__(self, recognizer: HandRecognizer, serial: RPSSerial=None):
+    def __init__(self, recognizer: HandRecognizer, serial: RPSSerial = None):
         self.recognizer = recognizer
         self.state = GameStage.WAITING
         self.serial = serial
@@ -37,28 +37,32 @@ class GameController:
             self.recognizer.motion_predictor.est_phase
             and self.recognizer.motion_predictor.est_phase > 0.5
         ):
-            self.state = GameStage.PLAYING
+            self.state = PlayingState(started_bot_move=None)
 
     def update_playing(self):
-        assert self.state == GameStage.PLAYING
+        assert isinstance(self.state, PlayingState)
 
         est_phase = self.recognizer.motion_predictor.est_phase
         # ... control update
 
         if est_phase is None or est_phase < 0.5:
             self.state = GameStage.WAITING
-        elif self.recognizer.motion_predictor.est_phase >= self.target_shoot_phase(
-            CONTROL_PREEMPT_SECS
+        elif (
+            self.state.started_bot_move is None
+            and self.recognizer.motion_predictor.est_phase
+            >= self.target_shoot_phase(CONTROL_PREEMPT_PHASES)
         ):
+            self.start_movement()
+        elif self.recognizer.motion_predictor.est_phase >= 4:
             self.shoot()
 
-    def shoot(self):
-        assert self.state == GameStage.PLAYING
+    def start_movement(self):
+        assert (
+            isinstance(self.state, PlayingState) and self.state.started_bot_move is None
+        )
 
         # Pick the move to play
-        bot_move = random.choice(
-            [HandGesture.ROCK, HandGesture.SCISSORS]
-        )
+        bot_move = random.choice([HandGesture.ROCK, HandGesture.SCISSORS])
         # Set control to make gesture
         if self.serial:
             match bot_move:
@@ -69,8 +73,17 @@ class GameController:
                 case HandGesture.SCISSORS:
                     self.serial.scissors()
 
+        self.state.started_bot_move = bot_move
+
+    def shoot(self):
+        assert isinstance(self.state, PlayingState)
+
+        # If haven't started bot movement yet (no preempt), do it now
+        if self.state.started_bot_move is None:
+            self.start_movement()
+
         # Transition to waiting for result to be recognized
-        self.state = PendingState(time.time(), bot_move)
+        self.state = PendingState(time.time(), self.state.started_bot_move)
 
     def update_pending(self):
         assert isinstance(self.state, PendingState)
@@ -122,6 +135,11 @@ class GameStage(Enum):
     PLAYING = auto()
     PENDING_RESULT = auto()
     GAME_END = auto()
+
+
+@dataclass
+class PlayingState:
+    started_bot_move: HandGesture | None
 
 
 @dataclass
