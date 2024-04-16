@@ -46,15 +46,15 @@ class GameController:
 
         if est_phase is None or est_phase < 0.5:
             self.state = GameStage.WAITING
-        elif self.state.started_shoot_move is None:
+
+        if self.state.started_shoot_move is None:
             self.bob_if_needed()
-        elif (
-            self.state.started_shoot_move is None
-            and self.recognizer.motion_predictor.est_phase
-            >= self.delay_compensate_phase(4, CONTROL_PREEMPT_SECS)
-        ):
-            self.start_shoot_movement()
-        elif self.recognizer.motion_predictor.est_phase >= 4:
+            if (
+                self.recognizer.motion_predictor.est_phase
+                >= self.delay_compensate_phase(4, CONTROL_PREEMPT_SECS)
+            ):
+                self.start_shoot_movement()
+        if self.recognizer.motion_predictor.est_phase >= 4:
             self.shoot()
 
     def bob_if_needed(self):
