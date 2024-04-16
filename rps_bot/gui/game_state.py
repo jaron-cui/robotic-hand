@@ -3,8 +3,9 @@ import matplotlib.pyplot as plt
 from rps_bot.game_flow.controller import (
     GameController,
     GameStage,
-    GameEndState,
+    PlayingState,
     PendingState,
+    GameEndState,
 )
 from rps_bot.recognizer.gestures import GameResult, HandGesture
 
@@ -30,7 +31,7 @@ class LiveGameStatePlot:
                 self.bot_move_text.set(text="Bot:", backgroundcolor="w")
                 self.player_move_text.set(text="Player:", backgroundcolor="w")
 
-            case GameStage.PLAYING:
+            case PlayingState(_):
                 self.state_text.set(
                     text="Rock...paper...scissors...", backgroundcolor="lightblue"
                 )
