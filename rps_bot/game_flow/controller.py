@@ -25,7 +25,7 @@ class GameController:
         match self.state:
             case GameStage.WAITING:
                 self.update_waiting()
-            case GameStage.PLAYING:
+            case PlayingState(_):
                 self.update_playing()
             case PendingState(_):
                 self.update_pending()
@@ -49,12 +49,9 @@ class GameController:
 
         if self.state.started_shoot_move is None:
             self.bob_if_needed()
-            if (
-                self.recognizer.motion_predictor.est_phase
-                >= self.delay_compensate_phase(4, CONTROL_PREEMPT_SECS)
-            ):
+            if est_phase >= self.delay_compensate_phase(4, CONTROL_PREEMPT_SECS):
                 self.start_shoot_movement()
-        if self.recognizer.motion_predictor.est_phase >= 4:
+        if est_phase >= 4:
             self.shoot()
 
     def bob_if_needed(self):
@@ -147,9 +144,6 @@ class GameController:
 
 class GameStage(Enum):
     WAITING = auto()
-    PLAYING = auto()
-    PENDING_RESULT = auto()
-    GAME_END = auto()
 
 
 @dataclass
