@@ -45,7 +45,9 @@ class GameController:
         est_phase = self.recognizer.motion_predictor.est_phase
 
         if est_phase is None or est_phase < 0.5:
-            self.state = GameStage.WAITING
+            # Reset robot hand gesture
+            if self.serial:
+                self.serial.paper()
         elif self.state.started_shoot_move is None:
             self.bob_if_needed()
             if est_phase >= self.delay_compensate_phase(4, CONTROL_PREEMPT_SECS):
