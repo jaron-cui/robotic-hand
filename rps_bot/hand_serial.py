@@ -24,7 +24,7 @@ def read_forever(serial: ps.Serial, lock: threading.Lock):
 
 
 class RPSSerial:
-    def __init__(self, port='COM5', eport='COM10', baudrate=250000):
+    def __init__(self, port: str, eport: str, baudrate=250000):
         self.finger_control = ps.Serial(port, baudrate)
         self.elbow_control = ps.Serial(eport, baudrate)
         self.stop = threading.Lock()
@@ -37,7 +37,6 @@ class RPSSerial:
         self.finger_control.write(f'{finger.value}|GOAL: {position}\n'.encode('utf-8'))
 
     def __trigger_movement(self):
-        time.sleep(1)
         self.finger_control.write(b'STATE: MOVE\n')
 
     def __zero(self):
@@ -69,6 +68,7 @@ class RPSSerial:
     def rock(self):
         for finger in FOUR_FINGERS:
             self.__retract_finger(finger)
+
         self.__trigger_movement()
 
     def paper(self):

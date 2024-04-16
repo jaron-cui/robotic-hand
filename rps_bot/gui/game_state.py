@@ -21,8 +21,8 @@ class LiveGameStatePlot:
         )
         self.ax.axis("off")
 
-    def update(self, controller: GameController):
-        match controller.state:
+    def update(self, state: GameStage):
+        match state:
             case GameStage.WAITING:
                 self.text.set_text("Waiting...")
             case GameStage.PLAYING:

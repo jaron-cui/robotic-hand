@@ -12,14 +12,14 @@ MAX_WAIT_FOR_GESTURE_RECOGNITION = 2
 GAME_RESULTS_PAUSE_SECS = 2.5
 # How much in advance control signals should be sent before the actual require time
 # i.e. the control delay.
-CONTROL_PREEMPT_SECS = 0.5
+CONTROL_PREEMPT_SECS = 2
 
 
 class GameController:
-    def __init__(self, recognizer: HandRecognizer):
+    def __init__(self, recognizer: HandRecognizer, serial: RPSSerial):
         self.recognizer = recognizer
         self.state = GameStage.WAITING
-        self.serial = RPSSerial()
+        self.serial = serial
 
     def update(self):
         match self.state:
@@ -57,7 +57,7 @@ class GameController:
 
         # Pick the move to play
         bot_move = random.choice(
-            [HandGesture.ROCK, HandGesture.PAPER, HandGesture.SCISSORS]
+            [HandGesture.ROCK, HandGesture.SCISSORS]
         )
         # Set control to make gesture
         match bot_move:

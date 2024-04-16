@@ -5,7 +5,7 @@ import time
 
 from rps_bot.recognizer import HandRecognizer
 from .game_state import LiveGameStatePlot
-from rps_bot.game_flow.controller import GameController
+from rps_bot.game_flow.controller import GameStage
 
 mplstyle.use(["fast"])
 
@@ -21,7 +21,7 @@ class GuiMainFigure:
         plt.ion()
         plt.show()
 
-    def update(self, recognizer: HandRecognizer, controller: GameController):
+    def update(self, recognizer: HandRecognizer, stage: GameStage):
         preds = recognizer.motion_predictor.filtered_from_last_n_secs(3)
         ts = [p[0] for p in preds]
         y = [p[1][0] for p in preds]
@@ -32,7 +32,7 @@ class GuiMainFigure:
         peaks = [p.ts for p in recognizer.motion_predictor.turning_points]
         self.hand_height_plt.axvlines(peaks)
 
-        self.game_state_plt.update(controller)
+        self.game_state_plt.update(stage)
 
         eta = recognizer.motion_predictor.move_eta
         self.motion_pred_plot.update_phase(
