@@ -16,7 +16,7 @@ CONTROL_PREEMPT_SECS = 2
 
 
 class GameController:
-    def __init__(self, recognizer: HandRecognizer, serial: RPSSerial):
+    def __init__(self, recognizer: HandRecognizer, serial: RPSSerial=None):
         self.recognizer = recognizer
         self.state = GameStage.WAITING
         self.serial = serial
@@ -60,13 +60,14 @@ class GameController:
             [HandGesture.ROCK, HandGesture.SCISSORS]
         )
         # Set control to make gesture
-        match bot_move:
-            case HandGesture.ROCK:
-                self.serial.rock()
-            case HandGesture.PAPER:
-                self.serial.paper()
-            case HandGesture.SCISSORS:
-                self.serial.scissors()
+        if self.serial:
+            match bot_move:
+                case HandGesture.ROCK:
+                    self.serial.rock()
+                case HandGesture.PAPER:
+                    self.serial.paper()
+                case HandGesture.SCISSORS:
+                    self.serial.scissors()
 
         # Transition to waiting for result to be recognized
         self.state = PendingState(time.time(), bot_move)
@@ -103,7 +104,8 @@ class GameController:
     def update_game_end(self):
         if time.time() - self.state.ts_game_end >= GAME_RESULTS_PAUSE_SECS:
             # Reset robot hand gesture
-            self.serial.paper()
+            if self.serial:
+                self.serial.paper()
             # Transition back to waiting state
             self.state = GameStage.WAITING
 
